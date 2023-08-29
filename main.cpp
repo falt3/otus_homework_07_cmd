@@ -63,19 +63,22 @@ class IInterpret {
 public:
     virtual ~IInterpret() = default;
     virtual void execute() = 0;
-    std::function<void(ICommand& cmd)> callBack_cmd; 
 };
 
 // Класс интерпретатора
 class Interpret : public IInterpret {
 public:
-    Interpret(int count) : m_count(count) {}
-    Interpret(int count, std::string fileName) : m_count(count), m_fileName(fileName) {}
+    using TFunc = std::function<void(ICommand& cmd)>;
+
+    Interpret(int count, TFunc func) : m_count(count) { m_funcCallBack = func; }
+    Interpret(int count, TFunc func, std::string fileName) : 
+        m_count(count), m_fileName(fileName) { m_funcCallBack = func; }
     void execute() override;
 protected:
     int m_count;
     std::string m_fileName;
-private:
+    TFunc m_funcCallBack; 
+private:    
     void run(std::istream &in);
     int block(BlockCommand &cmd, std::istream &in);
     int dinamicBlock(BlockCommand &cmd, std::istream &in);
@@ -88,7 +91,7 @@ void Interpret::execute()
         run(std::cin);
     else {
         std::fstream fs(m_fileName, std::fstream::in);
-        if (fs.is_open()) {
+        if (fs.is_open()) {//    
             run(fs);
             fs.close();
         }        
@@ -106,7 +109,7 @@ void Interpret::run(std::istream &in)
             res = dinamicBlock(cmd, in);
 
         if (res >= 0) {
-            callBack_cmd(cmd);
+            m_funcCallBack(cmd);
             if (res == 2)
                 break;
         }
@@ -199,9 +202,8 @@ int main(int argc, const char *argv[])
         log.msg(cmd.getTime(), strOut.str());                     
     };
 
-    // Interpret interpret(sizeBlock, "./test_files/commands.txt");
-    Interpret interpret(sizeBlock);
-    interpret.callBack_cmd = ff;
+    // Interpret interpret(sizeBlock, ff, "./test_files/commands.txt");
+    Interpret interpret(sizeBlock, ff);
     interpret.execute();
 
     return 0;
